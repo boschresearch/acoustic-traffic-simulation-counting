@@ -1,0 +1,7 @@
+outputs/
+lightning_logs/
+.env
+mlruns/
+.neptune/
+logs/
+__pycache__/

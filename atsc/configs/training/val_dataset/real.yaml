@@ -1,0 +1,5 @@
+---
+# Real dataset
+_target_: atsc.counting.data.TrafficCountDataset
+root: ${env.real_root}/${site}
+index: ${env.real_root}/${site}/val.csv

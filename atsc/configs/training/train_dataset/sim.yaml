@@ -1,0 +1,7 @@
+---
+# Synthetic dataset, segments generated on the fly
+_target_: atsc.counting.data.SyntheticTrafficDataset
+sim_events_root: ${simulation.output_folder}
+event_duration: ${simulation.event_duration}
+random: true
+traffic_model_path: ${traffic.train.output_path}

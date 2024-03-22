@@ -1,0 +1,137 @@
+---
+# Please take a look at Hydra documentation for more information
+#  https://hydra.cc/docs/tutorials/basic/your_first_app/defaults/
+defaults:
+    - env: dev # reference to environment specific config in atsc/configs/env/
+    - model: baseline  # reference to model config in atsc/configs/model/
+    - training/train_dataset: real  # reference to train dataset config in atsc/configs/training/train_dataset/
+    - training/val_dataset: real  # reference to val dataset config in atsc/configs/training/val_dataset/
+    - _self_ # values in this file overwrite the defaults from files above
+
+# Site name, user input requested
+site: ???
+
+# --- Traffic flow modeling configuration ---
+traffic:
+
+    seed: 151
+    min_time_between_consecutive_events: 2s
+
+    # Traffic statistics are available as number of vehicles per hour, not per vehicle type.
+    # The following parameters are used to generate the maximum amount of cars and commercial vehicles
+    # starting from the traffic statistics.
+    car_max_fraction: 0.9
+    cv_max_fraction: 0.3
+
+    train:
+        num_hours: 24  # Number of hours to simulate traffic for
+        start_datetime: 2024-01-01T00:00:00  # initial timestamp for simulation
+        output_path: ${env.work_folder}/modeling/${site}/train.csv  # Path where the generated traffic flow is saved
+    val:
+        num_hours: 24
+        start_datetime: 2024-02-01T00:00:00
+        output_path: ${env.work_folder}/modeling/${site}/val.csv
+
+# --- Acoustic simulation configuration ---
+simulation:
+    # Parameter for generation of single pass-by events for the site
+    seed: 152 # Seed to control events generation
+    vehicle_types: # Vehicle types to simulate
+        - car
+        - cv
+    directions: # Vehicle directions to simulate
+        - left
+        - right
+    init_counter: 0  # Start simulation at this index
+    num_events: 50  # Simulate this many events
+    num_workers: 4  # Number of parallel workers in generation
+    lane_width: 3.5  # Width of the road lane [m]
+    event_duration: 30  # Duration of the generated events [s]
+    source_model: hm+bd  # Source model for the acoustic simulation. See atsc/simulation/events.py for available models.
+
+    # Output folder for generated events. Events are generated in a vehicle_type/direction/ folder structure.
+    output_folder: ${env.work_folder}/simulation/${site}
+
+
+# --- Training configuration ---
+
+training:
+
+    # Alias for the training run. If null it is created automatically with coolname
+    alias:
+
+    # Output directory for the training run
+    output_folder: ${env.work_folder}/counting/${site}/${training.alias}
+
+    # List of tags added to the logger
+    tags:
+
+    # Random seed
+    seed: 42
+
+    # Batch size
+    batch_size: 64
+
+    # Number of data loading workers
+    num_workers: 2
+
+    # Learning rate
+    learning_rate: 0.001
+
+    # Alias of pre-trained run, or path to pretrained model checkpoint
+    pretrained_model:
+
+    # Parameters passed to lightning.Trainer
+    #  https://lightning.ai/docs/pytorch/stable/common/trainer.html
+    trainer:
+        max_epochs: 100
+        log_every_n_steps: 5
+        accelerator: auto
+
+    callbacks:
+        # Parameters passed to lightning.pytorch.callbacks.EarlyStopping
+        #  https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.EarlyStopping.html
+        early_stopping:
+            monitor: val/loss_epoch
+            verbose: true
+            patience: 20
+        # Parameters passed to lightning.pytorch.callbacks.ModelCheckpoint
+        #  https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html
+        model_checkpoint:
+            monitor: val/loss_epoch
+            verbose: true
+            save_last: true
+            filename: best
+            dirpath: ${training.output_folder}/checkpoints/
+
+# --- Inference configuration ---
+inference:
+
+    # Accelerator used by lightning.Trainer
+    accelerator: auto
+
+    # Trained model alias to read the best checkpoint from
+    alias: ${training.alias}
+
+    # Batch size
+    batch_size: 64
+
+    # Number of data loading workers
+    num_workers: 2
+
+    # Split to run inference on
+    split: test
+
+    # Parameters passed to atsc.counting.data.TrafficCountDataset
+    dataset:
+        root: ${env.real_root}/${site}
+        index: ${env.real_root}/${site}/${inference.split}.csv
+
+    # Output path for inference results (csv)
+    output_path: ${env.work_folder}/counting/${site}/${inference.alias}/inference/${inference.split}.csv
+
+# --- Evaluation configuration ---
+evaluation:
+
+    # Output path for evaluation results (csv)
+    output_path: ${env.work_folder}/counting/${site}/${inference.alias}/evaluation/${inference.split}.csv
