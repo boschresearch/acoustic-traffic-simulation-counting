@@ -237,7 +237,7 @@ class SyntheticTrafficDataset(Dataset):
 
             if event_start_idx < 0:
                 # Event starts before the beginning of the segment
-                event_audio = event_audio[:, event_start_idx:]
+                event_audio = event_audio[:, -event_start_idx:]
                 audio_segment[:, : event_audio.shape[-1]] += event_audio
             elif event_start_idx + event_audio.shape[-1] > audio_segment.shape[-1]:
                 # Event ends after the end of the segment
